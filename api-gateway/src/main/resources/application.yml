@@ -1,0 +1,55 @@
+server:
+  port: 8990
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "*"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+      routes:
+        - id: student-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/students/**
+
+        - id: course-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/courses/**
+
+        - id: academic-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/academic-records/**
+
+        - id: reporting-service-rest
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/reports/**
+
+        - id: reporting-service-soap
+          uri: http://localhost:8084
+          predicates:
+            - Path=/ws/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+
+logging:
+  level:
+    root: INFO
+    org.springframework.cloud.gateway: INFO

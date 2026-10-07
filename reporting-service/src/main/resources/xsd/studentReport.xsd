@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:tns="http://ssis.com/reporting/soap"
+           targetNamespace="http://ssis.com/reporting/soap"
+           elementFormDefault="qualified">
+
+    <xs:element name="getStudentReportRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="studentId" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="getStudentReportResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="studentReport" type="tns:StudentReport"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="StudentReport">
+        <xs:sequence>
+            <xs:element name="studentId" type="xs:string"/>
+            <xs:element name="studentName" type="xs:string"/>
+            <xs:element name="email" type="xs:string"/>
+            <xs:element name="phone" type="xs:string"/>
+            <xs:element name="department" type="xs:string"/>
+            <xs:element name="program" type="xs:string"/>
+            <xs:element name="year" type="xs:int"/>
+            <xs:element name="semester" type="xs:int"/>
+            <xs:element name="status" type="xs:string"/>
+
+            <xs:element name="academicRecords">
+                <xs:complexType>
+                    <xs:sequence>
+                        <xs:element name="record" type="tns:CourseRecordXml" minOccurs="0" maxOccurs="unbounded"/>
+                    </xs:sequence>
+                </xs:complexType>
+            </xs:element>
+
+            <xs:element name="totalCourses" type="xs:int"/>
+            <xs:element name="averageMarks" type="xs:double"/>
+            <xs:element name="cumulativeGradePointAverage" type="xs:double"/>
+            <xs:element name="overallPerformance" type="xs:string"/>
+            <xs:element name="averageAttendance" type="xs:double"/>
+            <xs:element name="generatedAt" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="CourseRecordXml">
+        <xs:sequence>
+            <xs:element name="recordId" type="xs:string"/>
+            <xs:element name="courseCode" type="xs:string"/>
+            <xs:element name="courseName" type="xs:string"/>
+            <xs:element name="credits" type="xs:int"/>
+            <xs:element name="semester" type="xs:int"/>
+            <xs:element name="internalMarks" type="xs:double"/>
+            <xs:element name="externalMarks" type="xs:double"/>
+            <xs:element name="totalMarks" type="xs:double"/>
+            <xs:element name="grade" type="xs:string"/>
+            <xs:element name="gradePoint" type="xs:double"/>
+            <xs:element name="attendancePercentage" type="xs:double"/>
+            <xs:element name="remarks" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+</xs:schema>

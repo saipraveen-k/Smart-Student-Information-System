@@ -1,0 +1,21 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: academic-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/smart_student_information_system}
+      auto-index-creation: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  level:
+    root: INFO
+    com.ssis.academic: DEBUG

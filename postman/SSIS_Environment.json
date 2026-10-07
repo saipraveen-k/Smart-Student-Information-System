@@ -1,0 +1,31 @@
+{
+  "id": "ssis-env-local",
+  "name": "SSIS Local Environment",
+  "values": [
+    {
+      "key": "gatewayUrl",
+      "value": "http://localhost:8990",
+      "enabled": true
+    },
+    {
+      "key": "studentServiceUrl",
+      "value": "http://localhost:8081",
+      "enabled": true
+    },
+    {
+      "key": "courseServiceUrl",
+      "value": "http://localhost:8082",
+      "enabled": true
+    },
+    {
+      "key": "academicServiceUrl",
+      "value": "http://localhost:8083",
+      "enabled": true
+    },
+    {
+      "key": "reportingServiceUrl",
+      "value": "http://localhost:8084",
+      "enabled": true
+    }
+  ]
+}

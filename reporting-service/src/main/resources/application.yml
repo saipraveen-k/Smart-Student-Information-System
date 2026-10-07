@@ -1,0 +1,15 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: reporting-service
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/smart_student_information_system}
+
+logging:
+  level:
+    root: INFO
+    com.ssis.reporting: DEBUG
+    org.springframework.ws: DEBUG

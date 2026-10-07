@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: ssis-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=smart_student_information_system
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: ssis-api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  student-service:
+    build: ./student-service
+    container_name: ssis-student-service
+    ports:
+      - "8081:8081"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/smart_student_information_system
+    depends_on:
+      - mongodb
+
+  course-service:
+    build: ./course-service
+    container_name: ssis-course-service
+    ports:
+      - "8082:8082"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/smart_student_information_system
+    depends_on:
+      - mongodb
+
+  academic-service:
+    build: ./academic-service
+    container_name: ssis-academic-service
+    ports:
+      - "8083:8083"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/smart_student_information_system
+    depends_on:
+      - mongodb
+
+  reporting-service:
+    build: ./reporting-service
+    container_name: ssis-reporting-service
+    ports:
+      - "8084:8084"
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017/smart_student_information_system
+    depends_on:
+      - mongodb
+
+  frontend:
+    build: ./frontend
+    container_name: ssis-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api-gateway
+
+volumes:
+  mongo-data:

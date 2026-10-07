@@ -1,0 +1,160 @@
+{
+  "info": {
+    "name": "Smart Student Information System (SSIS) API Collection",
+    "description": "Complete Postman collection for REST APIs and SOAP Web Services in SSIS microservices architecture.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Student Service",
+      "item": [
+        {
+          "name": "Create Student (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"STU015\",\n  \"firstName\": \"Arjun\",\n  \"lastName\": \"Kumar\",\n  \"email\": \"arjun.kumar@ssis.edu\",\n  \"phone\": \"+919876543299\",\n  \"dateOfBirth\": \"2003-04-12\",\n  \"gender\": \"MALE\",\n  \"department\": \"AIML\",\n  \"program\": \"B.Tech\",\n  \"year\": 3,\n  \"semester\": 6,\n  \"enrollmentDate\": \"2022-08-01\",\n  \"address\": \"Hyderabad, Telangana\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": { "raw": "{{gatewayUrl}}/api/students", "host": ["{{gatewayUrl}}"], "path": ["api", "students"] }
+          }
+        },
+        {
+          "name": "Get All Students (GET)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{gatewayUrl}}/api/students", "host": ["{{gatewayUrl}}"], "path": ["api", "students"] }
+          }
+        },
+        {
+          "name": "Get Student By ID (GET)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{gatewayUrl}}/api/students/STU001", "host": ["{{gatewayUrl}}"], "path": ["api", "students", "STU001"] }
+          }
+        },
+        {
+          "name": "Search Students (GET)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{gatewayUrl}}/api/students/search?keyword=Sai", "host": ["{{gatewayUrl}}"], "path": ["api", "students", "search"], "query": [{ "key": "keyword", "value": "Sai" }] }
+          }
+        },
+        {
+          "name": "Update Student (PUT)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"STU001\",\n  \"firstName\": \"Sai\",\n  \"lastName\": \"Praveen (Updated)\",\n  \"email\": \"sai.praveen@ssis.edu\",\n  \"phone\": \"+919876543210\",\n  \"dateOfBirth\": \"2003-05-14\",\n  \"gender\": \"MALE\",\n  \"department\": \"AIML\",\n  \"program\": \"B.Tech\",\n  \"year\": 3,\n  \"semester\": 6,\n  \"enrollmentDate\": \"2022-08-01\",\n  \"address\": \"Hyderabad, Telangana\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": { "raw": "{{gatewayUrl}}/api/students/STU001", "host": ["{{gatewayUrl}}"], "path": ["api", "students", "STU001"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Course Service",
+      "item": [
+        {
+          "name": "Create Course (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"courseId\": \"C109\",\n  \"courseCode\": \"CS501\",\n  \"courseName\": \"Distributed Microservices Architecture\",\n  \"description\": \"Spring Boot Gateway, Docker, REST and SOAP Web Services\",\n  \"department\": \"CSE\",\n  \"credits\": 4,\n  \"semester\": 6,\n  \"facultyName\": \"Dr. Advanced Tech\",\n  \"status\": \"ACTIVE\"\n}"
+            },
+            "url": { "raw": "{{gatewayUrl}}/api/courses", "host": ["{{gatewayUrl}}"], "path": ["api", "courses"] }
+          }
+        },
+        {
+          "name": "Get All Courses (GET)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{gatewayUrl}}/api/courses", "host": ["{{gatewayUrl}}"], "path": ["api", "courses"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Academic Service",
+      "item": [
+        {
+          "name": "Create Academic Record (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recordId\": \"AR020\",\n  \"studentId\": \"STU001\",\n  \"courseId\": \"C102\",\n  \"academicYear\": \"2024-2025\",\n  \"semester\": 6,\n  \"internalMarks\": 35.0,\n  \"externalMarks\": 55.0,\n  \"attendancePercentage\": 94.0,\n  \"remarks\": \"High distinction in DS\"\n}"
+            },
+            "url": { "raw": "{{gatewayUrl}}/api/academic-records", "host": ["{{gatewayUrl}}"], "path": ["api", "academic-records"] }
+          }
+        },
+        {
+          "name": "Get Student Performance (GET)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{gatewayUrl}}/api/academic-records/student/STU001/performance", "host": ["{{gatewayUrl}}"], "path": ["api", "academic-records", "student", "STU001", "performance"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Reporting Service (SOAP)",
+      "item": [
+        {
+          "name": "Get Student SOAP Report (POST /ws)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "text/xml;charset=UTF-8" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\" xmlns:soap=\"http://ssis.com/reporting/soap\">\n   <soapenv:Header/>\n   <soapenv:Body>\n      <soap:getStudentReportRequest>\n         <soap:studentId>STU001</soap:studentId>\n      </soap:getStudentReportRequest>\n   </soapenv:Body>\n</soapenv:Envelope>"
+            },
+            "url": { "raw": "{{gatewayUrl}}/ws", "host": ["{{gatewayUrl}}"], "path": ["ws"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Exception & Validation Tests",
+      "item": [
+        {
+          "name": "404 Student Not Found Test",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{gatewayUrl}}/api/students/STU9999", "host": ["{{gatewayUrl}}"], "path": ["api", "students", "STU9999"] }
+          }
+        },
+        {
+          "name": "400 Invalid Email Validation Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"STU099\",\n  \"firstName\": \"Invalid\",\n  \"lastName\": \"User\",\n  \"email\": \"not-an-email\",\n  \"gender\": \"MALE\",\n  \"department\": \"AIML\",\n  \"program\": \"B.Tech\",\n  \"year\": 2,\n  \"semester\": 4\n}"
+            },
+            "url": { "raw": "{{gatewayUrl}}/api/students", "host": ["{{gatewayUrl}}"], "path": ["api", "students"] }
+          }
+        }
+      ]
+    }
+  ]
+}
