@@ -21,7 +21,7 @@ try {
 Write-Host "[2/3] Launching Java 21 Spring Boot Microservices..." -ForegroundColor Yellow
 
 $services = @(
-    @{ Name = "API Gateway"; Jar = "api-gateway\target\api-gateway-1.0.0.jar"; Port = 8080 },
+    @{ Name = "API Gateway"; Jar = "api-gateway\target\api-gateway-1.0.0.jar"; Port = 8990 },
     @{ Name = "Student Service"; Jar = "student-service\target\student-service-1.0.0.jar"; Port = 8081 },
     @{ Name = "Course Service"; Jar = "course-service\target\course-service-1.0.0.jar"; Port = 8082 },
     @{ Name = "Academic Service"; Jar = "academic-service\target\academic-service-1.0.0.jar"; Port = 8083 },
@@ -47,7 +47,7 @@ if (Test-Path "frontend") {
 Write-Host "=========================================================" -ForegroundColor Cyan
 Write-Host "  ALL SERVICES LAUNCHED SUCCESSFULLY!" -ForegroundColor Green
 Write-Host "  - React Dashboard:  http://localhost:3000" -ForegroundColor White
-Write-Host "  - API Gateway:      http://localhost:8080" -ForegroundColor White
+Write-Host "  - API Gateway:      http://localhost:8990" -ForegroundColor White
 Write-Host "  - SOAP WSDL:        http://localhost:8084/ws/studentReport.wsdl" -ForegroundColor White
 Write-Host "  - MongoDB Compass:  mongodb://localhost:27017" -ForegroundColor White
 Write-Host "=========================================================" -ForegroundColor Cyan
