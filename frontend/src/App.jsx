@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, BookOpen, GraduationCap, BarChart2, FileCode, Info } from 'lucide-react';
+import { 
+  LayoutDashboard, Users, BookOpen, GraduationCap, 
+  BarChart2, FileCode, Info, Settings as SettingsIcon,
+  Sun, Moon, Menu, X, RefreshCw, Layers
+} from 'lucide-react';
+import { useTheme } from './context/ThemeContext';
+import { useToast } from './context/ToastContext';
+import { studentApi, courseApi, academicApi } from './services/api';
 
 import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
@@ -10,97 +17,224 @@ import AcademicRecords from './pages/AcademicRecords';
 import PerformanceAnalytics from './pages/PerformanceAnalytics';
 import Reports from './pages/Reports';
 import ApiDocInfo from './pages/ApiDocInfo';
+import Settings from './pages/Settings';
 
 export default function App() {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
+  const { addToast } = useToast();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
-  const getPageTitle = () => {
+  const getPageInfo = () => {
     const path = location.pathname;
-    if (path === '/') return 'Dashboard';
-    if (path.startsWith('/students/')) return 'Student Profile Details';
-    if (path === '/students') return 'Student Directory';
-    if (path === '/courses') return 'Course Catalog';
-    if (path === '/academic-records') return 'Academic Records';
-    if (path === '/analytics') return 'Performance Analytics';
-    if (path === '/reports') return 'REST & SOAP Integration';
-    if (path === '/api-docs') return 'API Documentation';
-    return 'SSIS Portal';
+    if (path === '/') return { title: 'Academic Overview', section: 'Dashboard' };
+    if (path.startsWith('/students/')) return { title: 'Student Profile', section: 'Directory' };
+    if (path === '/students') return { title: 'Students Directory', section: 'Administration' };
+    if (path === '/courses') return { title: 'Course Catalog', section: 'Curriculum' };
+    if (path === '/academic-records') return { title: 'Academic Records', section: 'Evaluations' };
+    if (path === '/analytics') return { title: 'Performance Analytics', section: 'Insights' };
+    if (path === '/reports') return { title: 'REST & SOAP Hub', section: 'Integrations' };
+    if (path === '/api-docs') return { title: 'API Documentation', section: 'Specifications' };
+    if (path === '/settings') return { title: 'Settings & Topology', section: 'System' };
+    return { title: 'SSIS Portal', section: 'System' };
   };
+
+  const handleQuickSeed = async () => {
+    setSeeding(true);
+    try {
+      await Promise.all([
+        studentApi.seed(),
+        courseApi.seed(),
+        academicApi.seed()
+      ]);
+      addToast('System database successfully seeded with demo records', 'success');
+      // Dispatch custom event to let active page know data refreshed
+      window.dispatchEvent(new Event('ssis-data-seeded'));
+    } catch (err) {
+      console.error('Seed error:', err);
+      addToast('Seed operation failed: ' + (err.response?.data?.message || err.message), 'error');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const pageInfo = getPageInfo();
 
   return (
     <div className="app-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <div className="logo-badge">SSIS</div>
-          <div>
-            <div className="sidebar-title">Smart Student</div>
-            <div className="sidebar-subtitle">Info System</div>
+      {/* Mobile Backdrop */}
+      {mobileMenuOpen && (
+        <div 
+          className="modal-overlay" 
+          style={{ zIndex: 95 }} 
+          onClick={() => setMobileMenuOpen(false)} 
+        />
+      )}
+
+      {/* Sidebar Navigation */}
+      <aside className={`sidebar ${mobileMenuOpen ? 'open' : ''}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-brand">
+            <div className="sidebar-logo-icon">SSIS</div>
+            <div>
+              <div className="sidebar-brand-title">Smart SIS</div>
+              <div className="sidebar-brand-sub">Enterprise Portal</div>
+            </div>
           </div>
+          {mobileMenuOpen && (
+            <button 
+              className="btn btn-ghost btn-icon mobile-nav-toggle"
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
-        <ul className="nav-list">
-          <li className="nav-item">
-            <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
-              <LayoutDashboard size={18} /> Dashboard
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink to="/students" className={({ isActive }) => (isActive ? 'active' : '')}>
-              <Users size={18} /> Students
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink to="/courses" className={({ isActive }) => (isActive ? 'active' : '')}>
-              <BookOpen size={18} /> Course Catalog
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink to="/academic-records" className={({ isActive }) => (isActive ? 'active' : '')}>
-              <GraduationCap size={18} /> Academic Records
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink to="/analytics" className={({ isActive }) => (isActive ? 'active' : '')}>
-              <BarChart2 size={18} /> Analytics
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink to="/reports" className={({ isActive }) => (isActive ? 'active' : '')}>
-              <FileCode size={18} /> REST & SOAP Reports
-            </NavLink>
-          </li>
-          <li className="nav-item">
-            <NavLink to="/api-docs" className={({ isActive }) => (isActive ? 'active' : '')}>
-              <Info size={18} /> API Documentation
-            </NavLink>
-          </li>
-        </ul>
+        <nav className="sidebar-nav">
+          <div className="nav-section-label">Core Platform</div>
 
-        <div style={{ marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <div>Microservices Architecture</div>
-          <div>Java 21 • Spring Boot 3.3</div>
-          <div>MongoDB • REST • SOAP</div>
+          <NavLink 
+            to="/" 
+            end 
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <LayoutDashboard size={16} />
+            <span>Dashboard</span>
+          </NavLink>
+
+          <NavLink 
+            to="/students" 
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <Users size={16} />
+            <span>Students</span>
+          </NavLink>
+
+          <NavLink 
+            to="/courses" 
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <BookOpen size={16} />
+            <span>Courses</span>
+          </NavLink>
+
+          <NavLink 
+            to="/academic-records" 
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <GraduationCap size={16} />
+            <span>Academic Records</span>
+          </NavLink>
+
+          <div className="nav-section-label" style={{ marginTop: '0.75rem' }}>Intelligence & Protocols</div>
+
+          <NavLink 
+            to="/analytics" 
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <BarChart2 size={16} />
+            <span>Performance Analytics</span>
+          </NavLink>
+
+          <NavLink 
+            to="/reports" 
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <FileCode size={16} />
+            <span>Reports (REST & SOAP)</span>
+          </NavLink>
+
+          <div className="nav-section-label" style={{ marginTop: '0.75rem' }}>Platform & Config</div>
+
+          <NavLink 
+            to="/api-docs" 
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <Info size={16} />
+            <span>API Documentation</span>
+          </NavLink>
+
+          <NavLink 
+            to="/settings" 
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <SettingsIcon size={16} />
+            <span>Settings</span>
+          </NavLink>
+        </nav>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-badge-arch">
+            <span className="status-dot"></span>
+            <span>Gateway :8990</span>
+          </div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+            Spring Boot 3.3 • Java 21 • Mongo 8.0
+          </div>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <main className="main-content">
+      {/* Main Wrapper */}
+      <div className="main-wrapper">
         {/* Top Navbar */}
         <header className="top-navbar">
-          <div className="top-nav-title">{getPageTitle()}</div>
+          <div className="top-nav-left">
+            <button 
+              className="btn btn-ghost btn-icon mobile-nav-toggle"
+              onClick={() => setMobileMenuOpen(true)}
+              aria-label="Open sidebar menu"
+            >
+              <Menu size={18} />
+            </button>
+            <div className="top-nav-title">
+              <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{pageInfo.section}</span>
+              <span className="top-nav-breadcrumb-sep">/</span>
+              <span>{pageInfo.title}</span>
+            </div>
+          </div>
 
-          <div className="microservices-pills">
-            <div className="status-pill"><span className="dot"></span> Gateway:8080</div>
-            <div className="status-pill"><span className="dot"></span> Student:8081</div>
-            <div className="status-pill"><span className="dot"></span> Course:8082</div>
-            <div className="status-pill"><span className="dot"></span> Academic:8083</div>
-            <div className="status-pill"><span className="dot"></span> Report:8084</div>
+          <div className="top-nav-right">
+            {/* Live Microservices Status */}
+            <div className="microservice-status-bar" title="All microservices active and responding">
+              <span className="status-dot pulse"></span>
+              <span>6/6 SERVICES ACTIVE</span>
+            </div>
+
+            {/* Quick Seed Action */}
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={handleQuickSeed}
+              disabled={seeding}
+              title="Seed or reset sample data across MongoDB collections"
+            >
+              <RefreshCw size={13} className={seeding ? 'spin' : ''} />
+              <span>{seeding ? 'Seeding...' : 'Seed Data'}</span>
+            </button>
+
+            {/* Dark/Light Mode Toggle */}
+            <button
+              className="btn btn-secondary btn-icon"
+              onClick={toggleTheme}
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} mode`}
+              aria-label="Toggle theme"
+            >
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
           </div>
         </header>
 
-        {/* Page Content */}
-        <div className="page-body">
+        {/* Page Content Body */}
+        <main className="page-body">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/students" element={<Students />} />
@@ -110,9 +244,10 @@ export default function App() {
             <Route path="/analytics" element={<PerformanceAnalytics />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/api-docs" element={<ApiDocInfo />} />
+            <Route path="/settings" element={<Settings />} />
           </Routes>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 }

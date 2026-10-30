@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { academicApi, studentApi, courseApi } from '../services/api';
-import { Plus, Edit, Trash2, Award, Calculator } from 'lucide-react';
+import { 
+  Plus, Edit2, Trash2, Award, Calculator, 
+  Search, Filter, X, RefreshCw, ChevronLeft, ChevronRight, GraduationCap 
+} from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 export default function AcademicRecords() {
   const [records, setRecords] = useState([]);
@@ -9,6 +13,17 @@ export default function AcademicRecords() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Filters & Search
+  const [searchStudentId, setSearchStudentId] = useState('ALL');
+  const [searchCourseId, setSearchCourseId] = useState('ALL');
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+
+  const { addToast } = useToast();
 
   const [formData, setFormData] = useState({
     recordId: '',
@@ -19,20 +34,20 @@ export default function AcademicRecords() {
     internalMarks: 30.0,
     externalMarks: 50.0,
     attendancePercentage: 90.0,
-    remarks: 'Good progress'
+    remarks: 'Satisfactory performance'
   });
 
   // Calculate live preview totals and grades
   const totalMarksPreview = (parseFloat(formData.internalMarks) || 0) + (parseFloat(formData.externalMarks) || 0);
 
   const getGradePreview = (total) => {
-    if (total >= 90) return { grade: 'O', gp: 10 };
-    if (total >= 80) return { grade: 'A+', gp: 9 };
-    if (total >= 70) return { grade: 'A', gp: 8 };
-    if (total >= 60) return { grade: 'B+', gp: 7 };
-    if (total >= 50) return { grade: 'B', gp: 6 };
-    if (total >= 40) return { grade: 'C', gp: 5 };
-    return { grade: 'F', gp: 0 };
+    if (total >= 90) return { grade: 'O', gp: 10.0, status: 'Distinction' };
+    if (total >= 80) return { grade: 'A+', gp: 9.0, status: 'Excellent' };
+    if (total >= 70) return { grade: 'A', gp: 8.0, status: 'Very Good' };
+    if (total >= 60) return { grade: 'B+', gp: 7.0, status: 'Good' };
+    if (total >= 50) return { grade: 'B', gp: 6.0, status: 'Above Average' };
+    if (total >= 40) return { grade: 'C', gp: 5.0, status: 'Average' };
+    return { grade: 'F', gp: 0.0, status: 'Fail' };
   };
 
   const previewGrading = getGradePreview(totalMarksPreview);
@@ -48,8 +63,10 @@ export default function AcademicRecords() {
       setRecords(recRes.data.data || []);
       setStudents(stuRes.data.data || []);
       setCourses(crsRes.data.data || []);
+      setCurrentPage(1);
     } catch (err) {
       console.error('Error loading academic records:', err);
+      addToast('Error fetching records from Academic Microservice', 'error');
     } finally {
       setLoading(false);
     }
@@ -85,7 +102,7 @@ export default function AcademicRecords() {
         internalMarks: 32.0,
         externalMarks: 52.0,
         attendancePercentage: 92.0,
-        remarks: 'Excellent performance'
+        remarks: 'Excellent mastery in coursework'
       });
     }
     setShowModal(true);
@@ -93,262 +110,458 @@ export default function AcademicRecords() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
       if (editingRecord) {
         await academicApi.update(editingRecord.recordId, formData);
+        addToast(`Academic Record ${formData.recordId} updated`, 'success');
       } else {
         await academicApi.create(formData);
+        addToast(`New Academic Record ${formData.recordId} evaluated`, 'success');
       }
       setShowModal(false);
       loadData();
     } catch (err) {
-      alert('Error saving record: ' + (err.response?.data?.message || err.message));
+      console.error('Error saving record:', err);
+      addToast('Error saving academic record: ' + (err.response?.data?.message || err.message), 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (recordId) => {
-    if (window.confirm(`Are you sure you want to delete academic record ${recordId}?`)) {
+    if (window.confirm(`Are you sure you want to delete evaluation record ${recordId}?`)) {
       try {
         await academicApi.delete(recordId);
+        addToast(`Record ${recordId} deleted successfully`, 'success');
         loadData();
       } catch (err) {
-        alert('Error deleting record: ' + (err.response?.data?.message || err.message));
+        console.error('Error deleting record:', err);
+        addToast('Error deleting record: ' + (err.response?.data?.message || err.message), 'error');
       }
     }
   };
 
+  // Filter records
+  const filteredRecords = records.filter(r => {
+    if (searchStudentId !== 'ALL' && r.studentId !== searchStudentId) return false;
+    if (searchCourseId !== 'ALL' && r.courseId !== searchCourseId) return false;
+    return true;
+  });
+
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredRecords.length / itemsPerPage) || 1;
+  const paginatedRecords = filteredRecords.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Academic Records & Grades</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Store student marks and compute grades dynamically in MongoDB
+          <h1 style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            Academic Records & Evaluations
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+            Continuous assessment, end-semester marks, dynamic CGPA and letter grade grading engine.
           </p>
         </div>
-        <button className="btn btn-primary" onClick={() => handleOpenModal()}>
-          <Plus size={16} /> Add Academic Record
-        </button>
+
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <button 
+            className="btn btn-secondary btn-sm"
+            onClick={loadData}
+            disabled={loading}
+          >
+            <RefreshCw size={13} className={loading ? 'spin' : ''} />
+            <span>Refresh</span>
+          </button>
+          <button 
+            className="btn btn-primary btn-sm"
+            onClick={() => handleOpenModal()}
+          >
+            <Plus size={14} />
+            <span>Record Evaluation</span>
+          </button>
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="card">
-        <div className="table-container">
-          <table>
-            <thead>
+      {/* Filter and Search Bar */}
+      <div className="card" style={{ marginBottom: '1.25rem', padding: '1rem' }}>
+        <div className="filter-bar" style={{ margin: 0 }}>
+          <div className="filter-group" style={{ flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Filter size={14} style={{ color: 'var(--text-muted)' }} />
+              <select
+                className="form-select"
+                style={{ width: 'auto', minWidth: '180px' }}
+                value={searchStudentId}
+                onChange={(e) => setSearchStudentId(e.target.value)}
+              >
+                <option value="ALL">All Students ({students.length})</option>
+                {students.map(s => (
+                  <option key={s.studentId} value={s.studentId}>
+                    {s.studentId} — {s.firstName} {s.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <select
+              className="form-select"
+              style={{ width: 'auto', minWidth: '180px' }}
+              value={searchCourseId}
+              onChange={(e) => setSearchCourseId(e.target.value)}
+            >
+              <option value="ALL">All Courses ({courses.length})</option>
+              {courses.map(c => (
+                <option key={c.courseId} value={c.courseId}>
+                  {c.courseCode} — {c.courseName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {(searchStudentId !== 'ALL' || searchCourseId !== 'ALL') && (
+            <button 
+              className="btn btn-ghost btn-sm"
+              onClick={() => { setSearchStudentId('ALL'); setSearchCourseId('ALL'); }}
+            >
+              <X size={13} />
+              <span>Reset Filters</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Academic Records Table */}
+      <div className="table-container">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Record ID</th>
+              <th>Student</th>
+              <th>Course Subject</th>
+              <th>Internal (40)</th>
+              <th>External (60)</th>
+              <th>Total Marks</th>
+              <th>Grade</th>
+              <th>Grade Point</th>
+              <th>Attendance</th>
+              <th style={{ textAlign: 'right' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
               <tr>
-                <th>Record ID</th>
-                <th>Student ID</th>
-                <th>Course ID</th>
-                <th>Academic Year</th>
-                <th>Sem</th>
-                <th>Internal (40)</th>
-                <th>External (60)</th>
-                <th>Total (100)</th>
-                <th>Grade</th>
-                <th>GP</th>
-                <th>Attendance</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
+                <td colSpan="10" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)' }}>
+                    <RefreshCw size={15} className="spin" />
+                    <span>Loading evaluations from Academic Microservice...</span>
+                  </div>
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {records.map(r => (
+            ) : paginatedRecords.length === 0 ? (
+              <tr>
+                <td colSpan="10">
+                  <div className="empty-state">
+                    <div className="empty-state-icon"><GraduationCap size={22} /></div>
+                    <div className="empty-state-title">No Academic Records</div>
+                    <div className="empty-state-desc">No examination evaluation records match your filter criteria.</div>
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleOpenModal()}>
+                      <Plus size={13} />
+                      <span>Record First Evaluation</span>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              paginatedRecords.map((r) => (
                 <tr key={r.recordId}>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--primary-accent)', fontWeight: 600 }}>{r.recordId}</td>
-                  <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600 }}>{r.studentId}</td>
-                  <td style={{ fontWeight: 600 }}>{r.courseId}</td>
-                  <td>{r.academicYear}</td>
-                  <td>Sem {r.semester}</td>
-                  <td>{r.internalMarks}</td>
-                  <td>{r.externalMarks}</td>
-                  <td style={{ fontWeight: 800, color: '#38bdf8' }}>{r.totalMarks}</td>
-                  <td><span className="badge badge-success">{r.grade}</span></td>
-                  <td style={{ fontWeight: 700 }}>{r.gradePoint}</td>
+                  <td>
+                    <span className="badge badge-outline" style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>
+                      {r.recordId}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{r.studentName || r.studentId}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+                      {r.studentId}
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ fontWeight: 500 }}>{r.courseName || r.courseCode}</div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'JetBrains Mono' }}>
+                      {r.courseCode} • Sem {r.semester}
+                    </div>
+                  </td>
+                  <td style={{ fontFamily: 'JetBrains Mono' }}>{r.internalMarks}</td>
+                  <td style={{ fontFamily: 'JetBrains Mono' }}>{r.externalMarks}</td>
+                  <td>
+                    <strong style={{ fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>{r.totalMarks}</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}> / 100</span>
+                  </td>
+                  <td>
+                    <span className={`grade-badge ${r.grade === 'O' ? 'grade-o' : ''}`}>
+                      {r.grade}
+                    </span>
+                  </td>
+                  <td style={{ fontWeight: 700, fontFamily: 'JetBrains Mono' }}>
+                    {r.gradePoint}
+                  </td>
                   <td>{r.attendancePercentage}%</td>
                   <td style={{ textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'flex-end' }}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => handleOpenModal(r)}>
-                        <Edit size={14} />
+                    <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                      <button
+                        className="btn btn-ghost btn-icon btn-sm"
+                        onClick={() => handleOpenModal(r)}
+                        title="Edit Marks"
+                      >
+                        <Edit2 size={14} />
                       </button>
-                      <button className="btn btn-danger btn-sm" onClick={() => handleDelete(r.recordId)}>
+                      <button
+                        className="btn btn-ghost btn-icon btn-sm"
+                        onClick={() => handleDelete(r.recordId)}
+                        title="Delete Record"
+                      >
                         <Trash2 size={14} />
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
-              {records.length === 0 && !loading && (
-                <tr>
-                  <td colSpan="12" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    No academic records available in MongoDB.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            )}
+          </tbody>
+        </table>
+
+        {/* Minimalist Pagination */}
+        {filteredRecords.length > 0 && (
+          <div className="pagination-container">
+            <div>
+              Showing <strong>{((currentPage - 1) * itemsPerPage) + 1}</strong> to <strong>{Math.min(currentPage * itemsPerPage, filteredRecords.length)}</strong> of <strong>{filteredRecords.length}</strong> evaluation records
+            </div>
+            <div className="pagination-controls">
+              <button
+                className="btn btn-secondary btn-sm btn-icon"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => p - 1)}
+                title="Previous page"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <span style={{ padding: '0 0.5rem', fontWeight: 600 }}>
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                className="btn btn-secondary btn-sm btn-icon"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => p + 1)}
+                title="Next page"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal */}
+      {/* Add / Edit Evaluation Modal */}
       {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
+        <div className="modal-overlay" onClick={() => !submitting && setShowModal(false)}>
+          <div className="modal-content modal-content-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
-                {editingRecord ? 'Edit Academic Record' : 'Add Academic Marks'}
-              </h2>
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowModal(false)}>✕</button>
+              <div className="modal-title">
+                {editingRecord ? `Update Evaluation: ${editingRecord.recordId}` : 'Enter Academic Evaluation'}
+              </div>
+              <button
+                className="btn btn-ghost btn-icon btn-sm"
+                onClick={() => setShowModal(false)}
+                disabled={submitting}
+              >
+                <X size={16} />
+              </button>
             </div>
+
             <form onSubmit={handleSubmit}>
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Record ID</label>
+              <div className="modal-body">
+                {/* Dynamic Calculation Live Banner */}
+                <div style={{
+                  padding: '1rem',
+                  backgroundColor: 'var(--bg-secondary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '6px',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Calculator size={18} />
+                    <div>
+                      <div style={{ fontSize: '0.72rem', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>
+                        Dynamic Evaluation Engine
+                      </div>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                        Internal ({formData.internalMarks || 0}) + External ({formData.externalMarks || 0}) = {totalMarksPreview} / 100
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Computed Grade</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600 }}>{previewGrading.status}</div>
+                    </div>
+                    <span className={`grade-badge ${previewGrading.grade === 'O' ? 'grade-o' : ''}`} style={{ fontSize: '1.1rem', padding: '0.25rem 0.6rem' }}>
+                      {previewGrading.grade}
+                    </span>
+                    <span className="badge badge-outline" style={{ fontFamily: 'JetBrains Mono', fontSize: '0.9rem' }}>
+                      {previewGrading.gp} GP
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Record ID</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={formData.recordId}
+                      onChange={(e) => setFormData({ ...formData, recordId: e.target.value })}
+                      disabled={!!editingRecord}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Student</label>
+                    <select
+                      className="form-select"
+                      value={formData.studentId}
+                      onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                      required
+                    >
+                      {students.map(s => (
+                        <option key={s.studentId} value={s.studentId}>
+                          {s.studentId} — {s.firstName} {s.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Course Subject</label>
+                    <select
+                      className="form-select"
+                      value={formData.courseId}
+                      onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
+                      required
+                    >
+                      {courses.map(c => (
+                        <option key={c.courseId} value={c.courseId}>
+                          {c.courseCode} — {c.courseName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Academic Year</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={formData.academicYear}
+                      onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Semester</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      className="form-input"
+                      value={formData.semester}
+                      onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) || 1 })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Attendance Percentage (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      className="form-input"
+                      value={formData.attendancePercentage}
+                      onChange={(e) => setFormData({ ...formData, attendancePercentage: parseFloat(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Internal Continuous Marks (Max 40)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="40"
+                      step="0.5"
+                      className="form-input"
+                      value={formData.internalMarks}
+                      onChange={(e) => setFormData({ ...formData, internalMarks: parseFloat(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">External Examination Marks (Max 60)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="60"
+                      step="0.5"
+                      className="form-input"
+                      value={formData.externalMarks}
+                      onChange={(e) => setFormData({ ...formData, externalMarks: parseFloat(e.target.value) || 0 })}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginTop: '0.5rem' }}>
+                  <label className="form-label">Faculty Evaluator Remarks</label>
                   <input
                     type="text"
                     className="form-input"
-                    value={formData.recordId}
-                    onChange={(e) => setFormData({ ...formData, recordId: e.target.value })}
-                    required
-                    disabled={!!editingRecord}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Academic Year</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={formData.academicYear}
-                    onChange={(e) => setFormData({ ...formData, academicYear: e.target.value })}
-                    required
+                    placeholder="e.g. Completed laboratory assessment and capstone presentation"
+                    value={formData.remarks}
+                    onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Select Student</label>
-                  <select
-                    className="form-select"
-                    value={formData.studentId}
-                    onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
-                    required
-                  >
-                    {students.map(s => (
-                      <option key={s.studentId} value={s.studentId}>
-                        {s.studentId} - {s.firstName} {s.lastName} ({s.department})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Select Course</label>
-                  <select
-                    className="form-select"
-                    value={formData.courseId}
-                    onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
-                    required
-                  >
-                    {courses.map(c => (
-                      <option key={c.courseId} value={c.courseId}>
-                        {c.courseId} ({c.courseCode}) - {c.courseName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Semester</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="8"
-                    className="form-input"
-                    value={formData.semester}
-                    onChange={(e) => setFormData({ ...formData, semester: parseInt(e.target.value) })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Attendance (%)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    className="form-input"
-                    value={formData.attendancePercentage}
-                    onChange={(e) => setFormData({ ...formData, attendancePercentage: parseFloat(e.target.value) })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label">Internal Marks (Max 40)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="40"
-                    className="form-input"
-                    value={formData.internalMarks}
-                    onChange={(e) => setFormData({ ...formData, internalMarks: parseFloat(e.target.value) })}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">External Marks (Max 60)</label>
-                  <input
-                    type="number"
-                    step="0.5"
-                    min="0"
-                    max="60"
-                    className="form-input"
-                    value={formData.externalMarks}
-                    onChange={(e) => setFormData({ ...formData, externalMarks: parseFloat(e.target.value) })}
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Dynamic Calculation Live Box */}
-              <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '1rem', margin: '1rem 0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary-accent)', fontWeight: 700, marginBottom: '0.5rem' }}>
-                  <Calculator size={18} /> Real-Time Performance Calculation Preview
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Calculated Total</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800 }}>{totalMarksPreview} / 100</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Assigned Grade</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#34d399' }}>{previewGrading.grade}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Grade Point</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#60a5fa' }}>{previewGrading.gp}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Remarks</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  value={formData.remarks}
-                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '1.5rem' }}>
-                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Save Academic Record</button>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowModal(false)}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={submitting}
+                >
+                  {submitting ? 'Calculating...' : editingRecord ? 'Update Record' : 'Record & Compute Grades'}
+                </button>
               </div>
             </form>
           </div>

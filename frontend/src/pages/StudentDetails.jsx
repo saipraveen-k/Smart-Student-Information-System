@@ -1,17 +1,23 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react'
+import { useParams, useNavigate } from 'react-router-dom';
 import { studentApi, academicApi, reportApi } from '../services/api';
-import { ArrowLeft, Award, FileText, Code, CheckCircle, Clock } from 'lucide-react';
+import { 
+  ArrowLeft, Award, FileText, Code, CheckCircle, 
+  Clock, Copy, Check, RefreshCw, X, BookOpen, GraduationCap 
+} from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 export default function StudentDetails() {
   const { studentId } = useParams();
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [student, setStudent] = useState(null);
   const [performance, setPerformance] = useState(null);
   const [loading, setLoading] = useState(true);
   const [soapXml, setSoapXml] = useState(null);
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportLoading, setReportLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const loadStudentData = async () => {
     setLoading(true);
@@ -24,6 +30,7 @@ export default function StudentDetails() {
       setPerformance(pRes.data.data);
     } catch (err) {
       console.error('Error loading student details:', err);
+      addToast('Error loading student profile from Student Microservice', 'error');
     } finally {
       setLoading(false);
     }
@@ -39,83 +46,157 @@ export default function StudentDetails() {
     try {
       const xmlResponse = await reportApi.getSoapReport(studentId);
       setSoapXml(xmlResponse);
+      addToast('SOAP XML Academic Report received from Port 8084', 'success');
     } catch (err) {
       console.error('Error generating SOAP report:', err);
-      setSoapXml('<Error>Failed to execute SOAP request to Reporting Service at http://localhost:8084/ws</Error>');
+      setSoapXml(`<Error>Failed to execute SOAP request to Reporting Service at http://localhost:8084/ws: ${err.message}</Error>`);
+      addToast('Failed to execute SOAP request', 'error');
     } finally {
       setReportLoading(false);
     }
   };
 
+  const handleCopyXml = () => {
+    if (soapXml) {
+      navigator.clipboard.writeText(soapXml);
+      setCopied(true);
+      addToast('SOAP XML payload copied to clipboard', 'info');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   if (loading || !student) {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading Student Profile...</div>;
+    return (
+      <div style={{ padding: '4rem 1rem', textAlign: 'center' }}>
+        <RefreshCw size={20} className="spin" style={{ margin: '0 auto 1rem', display: 'block' }} />
+        <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>Loading Student Profile...</div>
+      </div>
+    );
   }
 
   return (
     <div>
-      <button className="btn btn-secondary" style={{ marginBottom: '1.5rem' }} onClick={() => navigate('/students')}>
-        <ArrowLeft size={16} /> Back to Student List
+      {/* Back Button */}
+      <button 
+        className="btn btn-secondary btn-sm" 
+        style={{ marginBottom: '1.5rem' }} 
+        onClick={() => navigate('/students')}
+      >
+        <ArrowLeft size={14} />
+        <span>Back to Student Directory</span>
       </button>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800 }}>{student.firstName} {student.lastName}</h1>
-            <span className="badge badge-info" style={{ fontSize: '0.9rem' }}>{student.studentId}</span>
-            <span className={`badge ${student.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
-              {student.status}
-            </span>
+      {/* Header Profile Info */}
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                {student.firstName} {student.lastName}
+              </h1>
+              <span className="badge badge-outline" style={{ fontFamily: 'JetBrains Mono', fontSize: '0.85rem' }}>
+                {student.studentId}
+              </span>
+              <span className="badge">
+                <span className="status-dot" style={{ width: 5, height: 5 }}></span>
+                {student.status}
+              </span>
+            </div>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.35rem' }}>
+              {student.program} in {student.department} • Year {student.year}, Semester {student.semester} • Enrolled {student.enrollmentDate}
+            </p>
           </div>
-          <p style={{ color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
-            {student.program} in {student.department} • Year {student.year}, Semester {student.semester}
-          </p>
-        </div>
 
-        <button className="btn btn-primary" onClick={handleGenerateSoapReport}>
-          <FileText size={16} /> Generate SOAP Academic Report
-        </button>
-      </div>
-
-      {/* Grid Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        <div className="card">
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-            Personal Details
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.9rem' }}>
-            <div><strong>Email:</strong> {student.email}</div>
-            <div><strong>Phone:</strong> {student.phone || 'N/A'}</div>
-            <div><strong>Gender:</strong> {student.gender}</div>
-            <div><strong>Date of Birth:</strong> {student.dateOfBirth}</div>
-            <div><strong>Address:</strong> {student.address}</div>
-          </div>
-        </div>
-
-        <div className="card">
-          <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-secondary)' }}>
-            Academic Performance
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', fontSize: '0.9rem' }}>
-            <div><strong>Cumulative GPA:</strong> <span style={{ color: '#38bdf8', fontWeight: 800, fontSize: '1.2rem' }}>{performance?.cumulativeGradePointAverage || 0.0}</span> / 10.0</div>
-            <div><strong>Average Marks:</strong> {performance?.averageMarks || 0}%</div>
-            <div><strong>Overall Performance:</strong> <span className="badge badge-success">{performance?.overallPerformanceGrade || 'N/A'}</span></div>
-            <div><strong>Average Attendance:</strong> {performance?.averageAttendance || 0}%</div>
-            <div><strong>Courses Evaluated:</strong> {performance?.totalCoursesCompleted || 0}</div>
-          </div>
+          <button className="btn btn-primary btn-sm" onClick={handleGenerateSoapReport}>
+            <FileText size={14} />
+            <span>Generate SOAP Academic Report</span>
+          </button>
         </div>
       </div>
 
-      {/* Course Breakdown Table */}
+      {/* Detail Cards Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {/* Personal Info */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Personal Information</div>
+            <span className="badge badge-outline">STUDENT RECORD</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.82rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Email Address</span>
+              <span style={{ fontFamily: 'JetBrains Mono', fontWeight: 500 }}>{student.email}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Phone</span>
+              <span style={{ fontFamily: 'JetBrains Mono' }}>{student.phone || 'N/A'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Gender</span>
+              <span>{student.gender}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Date of Birth</span>
+              <span>{student.dateOfBirth}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Residential Address</span>
+              <span style={{ textAlign: 'right' }}>{student.address}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Academic Performance KPI */}
+        <div className="card">
+          <div className="card-header">
+            <div className="card-title">Cumulative Performance</div>
+            <span className="badge badge-inverted">GPA ENGINE</span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.82rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Cumulative Grade Point (CGPA)</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: 'JetBrains Mono', color: 'var(--text-primary)' }}>
+                {performance?.cumulativeGradePointAverage || 0.0} / 10.0
+              </span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Average Score</span>
+              <span style={{ fontWeight: 600 }}>{performance?.averageMarks || 0}%</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Average Attendance</span>
+              <span style={{ fontWeight: 600 }}>{performance?.averageAttendance || 0}%</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border-color)' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Evaluated Courses</span>
+              <span style={{ fontFamily: 'JetBrains Mono' }}>{performance?.totalCourses || 0} subjects</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-secondary)' }}>Performance Classification</span>
+              <span className="badge badge-inverted">{performance?.overallPerformance || 'Evaluating'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Evaluated Courses Table */}
       <div className="card">
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Subject-wise Marks & Evaluation</h3>
-        <div className="table-container">
-          <table>
+        <div className="card-header">
+          <div>
+            <div className="card-title">Evaluated Course Subjects</div>
+            <div className="card-description">Internal and external marks dynamic breakdown</div>
+          </div>
+        </div>
+
+        <div className="table-container" style={{ border: 'none' }}>
+          <table className="data-table">
             <thead>
               <tr>
                 <th>Record ID</th>
-                <th>Course ID</th>
-                <th>Academic Year</th>
-                <th>Semester</th>
+                <th>Course</th>
+                <th>Credits</th>
                 <th>Internal (40)</th>
                 <th>External (60)</th>
                 <th>Total (100)</th>
@@ -125,24 +206,33 @@ export default function StudentDetails() {
               </tr>
             </thead>
             <tbody>
-              {performance?.records?.map(rec => (
-                <tr key={rec.recordId}>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--primary-accent)' }}>{rec.recordId}</td>
-                  <td style={{ fontWeight: 600 }}>{rec.courseId}</td>
-                  <td>{rec.academicYear}</td>
-                  <td>Sem {rec.semester}</td>
-                  <td>{rec.internalMarks}</td>
-                  <td>{rec.externalMarks}</td>
-                  <td style={{ fontWeight: 700 }}>{rec.totalMarks}</td>
-                  <td><span className="badge badge-success">{rec.grade}</span></td>
-                  <td style={{ fontWeight: 700 }}>{rec.gradePoint}</td>
-                  <td>{rec.attendancePercentage}%</td>
-                </tr>
-              ))}
-              {(!performance?.records || performance.records.length === 0) && (
+              {performance?.academicRecords && performance.academicRecords.length > 0 ? (
+                performance.academicRecords.map((r) => (
+                  <tr key={r.recordId}>
+                    <td style={{ fontFamily: 'JetBrains Mono' }}>{r.recordId}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      {r.courseName || r.courseCode}
+                      <span className="badge badge-outline" style={{ marginLeft: '0.5rem', fontFamily: 'JetBrains Mono' }}>
+                        {r.courseCode}
+                      </span>
+                    </td>
+                    <td>{r.credits} Credits</td>
+                    <td>{r.internalMarks}</td>
+                    <td>{r.externalMarks}</td>
+                    <td style={{ fontWeight: 600 }}>{r.totalMarks}</td>
+                    <td>
+                      <span className={`grade-badge ${r.grade === 'O' ? 'grade-o' : ''}`}>
+                        {r.grade}
+                      </span>
+                    </td>
+                    <td style={{ fontFamily: 'JetBrains Mono', fontWeight: 600 }}>{r.gradePoint}</td>
+                    <td>{r.attendancePercentage}%</td>
+                  </tr>
+                ))
+              ) : (
                 <tr>
-                  <td colSpan="10" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                    No academic records registered for this student yet.
+                  <td colSpan="9" style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)' }}>
+                    No academic course records found for this student.
                   </td>
                 </tr>
               )}
@@ -153,36 +243,52 @@ export default function StudentDetails() {
 
       {/* SOAP Report Modal */}
       {showReportModal && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '800px' }}>
+        <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
+          <div className="modal-content modal-content-lg" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <div>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Code size={20} color="var(--primary-accent)" /> SOAP Web Service Response
-                </h2>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                  Returned from Spring-WS endpoint <code>http://localhost:8084/ws</code> using MongoDB live data
-                </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Code size={18} />
+                <span className="modal-title">SOAP XML Report — {student.studentId}</span>
               </div>
-              <button className="btn btn-secondary btn-sm" onClick={() => setShowReportModal(false)}>✕</button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                {soapXml && (
+                  <button className="btn btn-secondary btn-sm" onClick={handleCopyXml}>
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    <span>{copied ? 'Copied' : 'Copy XML'}</span>
+                  </button>
+                )}
+                <button 
+                  className="btn btn-ghost btn-icon btn-sm" 
+                  onClick={() => setShowReportModal(false)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
-            {reportLoading ? (
-              <div style={{ padding: '3rem', textAlign: 'center' }}>Generating XML SOAP Report...</div>
-            ) : (
-              <div>
-                <div style={{ marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
-                  <span className="badge badge-success"><CheckCircle size={12} /> 200 OK</span>
-                  <span className="badge badge-info">Content-Type: text/xml</span>
+            <div className="modal-body">
+              <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                <div>Endpoint: <code>POST http://localhost:8990/ws</code></div>
+                <div>Namespace: <code>http://ssis.com/reporting/soap</code></div>
+              </div>
+
+              {reportLoading ? (
+                <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+                  <RefreshCw size={20} className="spin" style={{ margin: '0 auto 1rem', display: 'block' }} />
+                  <div>Invoking Spring-WS SOAP endpoint...</div>
                 </div>
-                <pre className="code-preview">
+              ) : (
+                <pre className="code-viewer" style={{ maxHeight: '400px' }}>
                   {soapXml}
                 </pre>
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-                  <button className="btn btn-secondary" onClick={() => setShowReportModal(false)}>Close</button>
-                </div>
-              </div>
-            )}
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-primary btn-sm" onClick={() => setShowReportModal(false)}>
+                Close Viewer
+              </button>
+            </div>
           </div>
         </div>
       )}

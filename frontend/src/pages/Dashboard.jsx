@@ -1,11 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { Users, BookOpen, GraduationCap, Award, RefreshCw, Layers } from 'lucide-react';
+import { 
+  Users, BookOpen, GraduationCap, Award, RefreshCw, 
+  ArrowUpRight, CheckCircle2, ChevronRight, Activity, TrendingUp
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { studentApi, courseApi, academicApi } from '../services/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-
-const COLORS = ['#6366f1', '#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6'];
+import { useToast } from '../context/ToastContext';
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell 
+} from 'recharts';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalStudents: 0,
@@ -19,30 +27,34 @@ export default function Dashboard() {
   const [gradeDistribution, setGradeDistribution] = useState([]);
   const [semesterPerformance, setSemesterPerformance] = useState([]);
   const [recentStudents, setRecentStudents] = useState([]);
+  const [recentRecords, setRecentRecords] = useState([]);
 
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const [stuRes, crsRes, overviewRes] = await Promise.all([
+      const [stuRes, crsRes, overviewRes, recRes] = await Promise.all([
         studentApi.getAll(),
         courseApi.getAll(),
-        academicApi.getSystemOverview()
+        academicApi.getSystemOverview(),
+        academicApi.getAll()
       ]);
 
       const students = stuRes.data.data || [];
       const courses = crsRes.data.data || [];
       const overview = overviewRes.data.data || {};
+      const records = recRes.data.data || [];
 
       setStats({
         totalStudents: students.length,
         activeStudents: students.filter(s => s.status === 'ACTIVE').length,
         totalCourses: courses.length,
-        totalRecords: overview.totalRecords || 0,
+        totalRecords: overview.totalRecords || records.length,
         systemAverageMarks: overview.systemAverageMarks || 0,
         systemAverageGradePoint: overview.systemAverageGradePoint || 0
       });
 
       setRecentStudents(students.slice(0, 5));
+      setRecentRecords(records.slice(0, 5));
 
       // Department breakdown calculation
       const deptMap = {};
@@ -73,20 +85,7 @@ export default function Dashboard() {
 
     } catch (err) {
       console.error('Error loading dashboard data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSeedAll = async () => {
-    try {
-      setLoading(true);
-      await studentApi.seed();
-      await courseApi.seed();
-      await academicApi.seed();
-      await loadDashboardData();
-    } catch (err) {
-      console.error('Error seeding data:', err);
+      addToast('Error loading real-time dashboard data', 'error');
     } finally {
       setLoading(false);
     }
@@ -94,140 +93,316 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboardData();
+
+    // Listen for data seeded event from navbar
+    const handleSeeded = () => loadDashboardData();
+    window.addEventListener('ssis-data-seeded', handleSeeded);
+    return () => window.removeEventListener('ssis-data-seeded', handleSeeded);
   }, []);
+
+  // Monochrome chart palette
+  const MONO_SHADES = ['#FFFFFF', '#D4D4D8', '#A1A1AA', '#71717A', '#52525B', '#3F3F46'];
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{
+          backgroundColor: 'var(--bg-card)',
+          border: '1px solid var(--border-color)',
+          padding: '0.5rem 0.75rem',
+          borderRadius: '6px',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{label || payload[0].name}</div>
+          <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+            {payload[0].value} {payload[0].unit || ''}
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Academic Overview Dashboard</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-            Real-time analytics from MongoDB Microservices architecture
-          </p>
+      {/* Welcome Section */}
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+              <span className="status-dot"></span>
+              <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)' }}>
+                Enterprise Microservices v1.0.0
+              </span>
+            </div>
+            <h1 style={{ fontSize: '1.6rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+              Institutional Administration & Intelligence
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.2rem', maxWidth: '640px' }}>
+              Aggregated real-time metrics across Student, Course, Academic, and SOAP Reporting microservices backed by MongoDB.
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <button 
+              className="btn btn-secondary btn-sm"
+              onClick={loadDashboardData}
+              disabled={loading}
+              title="Refresh real-time data"
+            >
+              <RefreshCw size={13} className={loading ? 'spin' : ''} />
+              <span>Refresh Metrics</span>
+            </button>
+            <button 
+              className="btn btn-primary btn-sm"
+              onClick={() => navigate('/students')}
+            >
+              <span>Manage Students</span>
+              <ArrowUpRight size={13} />
+            </button>
+          </div>
         </div>
-        <button className="btn btn-secondary" onClick={handleSeedAll} disabled={loading}>
-          <RefreshCw size={16} className={loading ? 'spin' : ''} />
-          Seed / Reset Demo Data
-        </button>
       </div>
 
-      {/* Stats Cards */}
+      {/* KPI Stat Cards (5 Core Metrics) */}
       <div className="stat-grid">
+        {/* Total Students */}
         <div className="card stat-card">
           <div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Total Students</div>
-            <div className="stat-value">{stats.totalStudents}</div>
-            <div style={{ color: 'var(--success-color)', fontSize: '0.75rem', marginTop: '0.2rem' }}>
-              {stats.activeStudents} Active Students
+            <div className="stat-label">Total Students</div>
+            <div className="stat-value">{loading ? '...' : stats.totalStudents}</div>
+            <div className="stat-subtext">Active enrollment in records</div>
+          </div>
+          <div className="stat-icon"><Users size={18} /></div>
+        </div>
+
+        {/* Active Students */}
+        <div className="card stat-card">
+          <div>
+            <div className="stat-label">Active Status</div>
+            <div className="stat-value">{loading ? '...' : stats.activeStudents}</div>
+            <div className="stat-subtext">
+              {stats.totalStudents > 0 
+                ? `${Math.round((stats.activeStudents / stats.totalStudents) * 100)}% active attendance` 
+                : '100% active'}
             </div>
           </div>
-          <div className="stat-icon"><Users size={24} /></div>
+          <div className="stat-icon"><CheckCircle2 size={18} /></div>
         </div>
 
+        {/* Total Courses */}
         <div className="card stat-card">
           <div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Course Catalog</div>
-            <div className="stat-value">{stats.totalCourses}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.2rem' }}>Active Subjects</div>
+            <div className="stat-label">Accredited Courses</div>
+            <div className="stat-value">{loading ? '...' : stats.totalCourses}</div>
+            <div className="stat-subtext">Across 4 engineering depts</div>
           </div>
-          <div className="stat-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}><BookOpen size={24} /></div>
+          <div className="stat-icon"><BookOpen size={18} /></div>
         </div>
 
+        {/* Academic Records */}
         <div className="card stat-card">
           <div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>Academic Records</div>
-            <div className="stat-value">{stats.totalRecords}</div>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.2rem' }}>Evaluated Entries</div>
+            <div className="stat-label">Evaluated Records</div>
+            <div className="stat-value">{loading ? '...' : stats.totalRecords}</div>
+            <div className="stat-subtext">Internal & External scores</div>
           </div>
-          <div className="stat-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}><GraduationCap size={24} /></div>
+          <div className="stat-icon"><GraduationCap size={18} /></div>
         </div>
 
+        {/* Average Performance */}
         <div className="card stat-card">
           <div>
-            <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 600 }}>System Avg Marks</div>
-            <div className="stat-value">{stats.systemAverageMarks}%</div>
-            <div style={{ color: 'var(--warning-color)', fontSize: '0.75rem', marginTop: '0.2rem' }}>Avg GP: {stats.systemAverageGradePoint} / 10</div>
+            <div className="stat-label">Mean Performance</div>
+            <div className="stat-value">{loading ? '...' : `${stats.systemAverageMarks}%`}</div>
+            <div className="stat-subtext">{stats.systemAverageGradePoint} / 10.0 System CGPA</div>
           </div>
-          <div className="stat-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}><Award size={24} /></div>
+          <div className="stat-icon"><Award size={18} /></div>
         </div>
       </div>
 
-      {/* Charts Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        {/* Department Distribution */}
+      {/* Analytics Charts (Strictly Monochromatic) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {/* Department Enrollment Bar Chart */}
         <div className="card">
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Students by Department</h3>
-          <div style={{ height: '260px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={departmentData} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={85} label={({ name, count }) => `${name}: ${count}`}>
-                  {departmentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: '#151d2a', borderColor: '#2a364f', borderRadius: '8px' }} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="card-header">
+            <div>
+              <div className="card-title">Enrollment by Department</div>
+              <div className="card-description">Distribution of enrolled students across academic branches</div>
+            </div>
+            <span className="badge badge-outline">BSON PERSISTENCE</span>
           </div>
-        </div>
 
-        {/* Semester Performance */}
-        <div className="card">
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Average Marks by Semester</h3>
-          <div style={{ height: '260px' }}>
+          <div style={{ height: '240px', marginTop: '1rem' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={semesterPerformance}>
-                <XAxis dataKey="semester" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" domain={[0, 100]} />
-                <Tooltip contentStyle={{ backgroundColor: '#151d2a', borderColor: '#2a364f', borderRadius: '8px' }} />
-                <Bar dataKey="avgMarks" fill="#6366f1" radius={[6, 6, 0, 0]} />
+              <BarChart data={departmentData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <XAxis 
+                  dataKey="name" 
+                  stroke="var(--chart-axis)" 
+                  fontSize={11} 
+                  tickLine={false} 
+                  axisLine={{ stroke: 'var(--chart-grid)' }} 
+                />
+                <YAxis 
+                  stroke="var(--chart-axis)" 
+                  fontSize={11} 
+                  tickLine={false} 
+                  axisLine={{ stroke: 'var(--chart-grid)' }} 
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="count" fill="var(--chart-c1)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
+
+        {/* Grade Distribution Monochrome Pie/Bar */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Institutional Grade Distribution</div>
+              <div className="card-description">O, A+, A, B+, B, C breakdown dynamically evaluated</div>
+            </div>
+            <span className="badge badge-outline">GPA ENGINE</span>
+          </div>
+
+          <div style={{ height: '240px', marginTop: '1rem', display: 'flex', alignItems: 'center' }}>
+            {gradeDistribution.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={gradeDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="var(--chart-axis)" 
+                    fontSize={11} 
+                    tickLine={false} 
+                    axisLine={{ stroke: 'var(--chart-grid)' }} 
+                  />
+                  <YAxis 
+                    stroke="var(--chart-axis)" 
+                    fontSize={11} 
+                    tickLine={false} 
+                    axisLine={{ stroke: 'var(--chart-grid)' }} 
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="count" fill="var(--chart-c2)" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="empty-state" style={{ width: '100%', padding: '2rem 0' }}>
+                <div className="empty-state-desc">No academic grades distributed yet</div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Recent Students Table */}
-      <div className="card">
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '1rem' }}>Recent Registered Students</h3>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Student ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Department</th>
-                <th>Program</th>
-                <th>Year & Sem</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentStudents.map(student => (
-                <tr key={student.studentId}>
-                  <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--primary-accent)', fontWeight: 600 }}>{student.studentId}</td>
-                  <td style={{ fontWeight: 600 }}>{student.firstName} {student.lastName}</td>
-                  <td>{student.email}</td>
-                  <td><span className="badge badge-info">{student.department}</span></td>
-                  <td>{student.program}</td>
-                  <td>Year {student.year}, Sem {student.semester}</td>
-                  <td>
-                    <span className={`badge ${student.status === 'ACTIVE' ? 'badge-success' : 'badge-warning'}`}>
-                      {student.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-              {recentStudents.length === 0 && (
+      {/* Two Column Section: Recent Students & Recent Academic Activities */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(440px, 1fr))', gap: '1.5rem' }}>
+        {/* Recent Student Registrations */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Recent Student Registrations</div>
+              <div className="card-description">Latest profiles ingested into Student Service</div>
+            </div>
+            <button 
+              className="btn btn-ghost btn-sm"
+              onClick={() => navigate('/students')}
+            >
+              <span>View All</span>
+              <ChevronRight size={13} />
+            </button>
+          </div>
+
+          <div className="table-container" style={{ border: 'none' }}>
+            <table className="data-table">
+              <thead>
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
-                    No student records found. Click "Seed Demo Data" above to populate MongoDB.
-                  </td>
+                  <th>Student</th>
+                  <th>ID</th>
+                  <th>Dept</th>
+                  <th>Sem</th>
+                  <th>Status</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {recentStudents.map((s) => (
+                  <tr 
+                    key={s.studentId} 
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => navigate(`/students/${s.studentId}`)}
+                  >
+                    <td style={{ fontWeight: 600 }}>{s.firstName} {s.lastName}</td>
+                    <td>
+                      <span className="badge badge-outline" style={{ fontFamily: 'JetBrains Mono' }}>
+                        {s.studentId}
+                      </span>
+                    </td>
+                    <td>{s.department}</td>
+                    <td>Sem {s.semester}</td>
+                    <td>
+                      <span className="badge">
+                        <span className="status-dot" style={{ width: 4, height: 4 }}></span>
+                        {s.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Recent Academic Activities Feed */}
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="card-title">Recent Academic Evaluations</div>
+              <div className="card-description">Dynamic computation from Academic Service</div>
+            </div>
+            <button 
+              className="btn btn-ghost btn-sm"
+              onClick={() => navigate('/academic-records')}
+            >
+              <span>View All</span>
+              <ChevronRight size={13} />
+            </button>
+          </div>
+
+          <div className="table-container" style={{ border: 'none' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Record ID</th>
+                  <th>Student ID</th>
+                  <th>Marks (100)</th>
+                  <th>Grade</th>
+                  <th>GP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentRecords.map((r) => (
+                  <tr key={r.recordId}>
+                    <td style={{ fontFamily: 'JetBrains Mono' }}>{r.recordId}</td>
+                    <td>
+                      <span className="badge badge-outline" style={{ fontFamily: 'JetBrains Mono' }}>
+                        {r.studentId}
+                      </span>
+                    </td>
+                    <td>{r.totalMarks} / 100</td>
+                    <td>
+                      <span className={`grade-badge ${r.grade === 'O' ? 'grade-o' : ''}`}>
+                        {r.grade}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 600, fontFamily: 'JetBrains Mono' }}>
+                      {r.gradePoint}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

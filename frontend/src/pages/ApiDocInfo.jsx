@@ -1,138 +1,204 @@
 import React from 'react';
-import { ExternalLink, Database, Server, FileText, Layers, Terminal } from 'lucide-react';
+import { 
+  ExternalLink, Database, Server, FileText, 
+  Layers, Terminal, Copy, Check, ShieldCheck, ArrowUpRight 
+} from 'lucide-react';
+import { useToast } from '../context/ToastContext';
 
 export default function ApiDocInfo() {
+  const { addToast } = useToast();
+
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text);
+    addToast(`${label} copied to clipboard`, 'info');
+  };
+
   const swaggerLinks = [
-    { name: 'Student Service Swagger', url: 'http://localhost:8081/swagger-ui.html', port: '8081' },
-    { name: 'Course Service Swagger', url: 'http://localhost:8082/swagger-ui.html', port: '8082' },
-    { name: 'Academic Service Swagger', url: 'http://localhost:8083/swagger-ui.html', port: '8083' },
-    { name: 'API Gateway Routes', url: 'http://localhost:8080/actuator/gateway/routes', port: '8080' }
+    { name: 'Student Service Swagger', url: 'http://localhost:8081/swagger-ui.html', port: '8081', desc: 'REST endpoints for student lifecycle & BSON persistence' },
+    { name: 'Course Service Swagger', url: 'http://localhost:8082/swagger-ui.html', port: '8082', desc: 'Syllabus, credits, and faculty allocations' },
+    { name: 'Academic Service Swagger', url: 'http://localhost:8083/swagger-ui.html', port: '8083', desc: 'Dynamic mark evaluation, GPA, and statistical aggregation' },
+    { name: 'API Gateway Actuator Routes', url: 'http://localhost:8990/actuator/gateway/routes', port: '8990', desc: 'Spring Cloud Gateway reactive routing engine' }
   ];
 
   const soapLinks = [
-    { name: 'Reporting Service WSDL', url: 'http://localhost:8084/ws/studentReport.wsdl', port: '8084' }
+    { name: 'Reporting Service WSDL', url: 'http://localhost:8084/ws/studentReport.wsdl', port: '8084', desc: 'Contract-first SOAP 1.1 WSDL definition file' }
+  ];
+
+  const apiEndpoints = [
+    { method: 'GET', path: '/api/students', desc: 'Fetch all student profiles', port: '8990 -> 8081' },
+    { method: 'POST', path: '/api/students', desc: 'Create and register a new student', port: '8990 -> 8081' },
+    { method: 'GET', path: '/api/students/search?keyword={q}', desc: 'Full-text search by name or ID', port: '8990 -> 8081' },
+    { method: 'GET', path: '/api/courses', desc: 'List accredited courses catalog', port: '8990 -> 8082' },
+    { method: 'POST', path: '/api/courses', desc: 'Add new subject offering', port: '8990 -> 8082' },
+    { method: 'GET', path: '/api/academic-records', desc: 'Fetch continuous assessments', port: '8990 -> 8083' },
+    { method: 'GET', path: '/api/academic-records/student/{id}/performance', desc: 'Dynamic CGPA & grades calculation', port: '8990 -> 8083' },
+    { method: 'POST', path: '/ws', desc: 'SOAP XML getStudentReportRequest', port: '8990 -> 8084' }
   ];
 
   return (
     <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>API Documentation & System Architecture</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-          Interactive Swagger UI endpoints, WSDL descriptors, MongoDB Compass connection parameters, and Postman testing guide.
+      {/* Page Header */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+          API Documentation & System Architecture
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+          Interactive OpenAPI 3.0 Swagger specs, contract-first WSDL descriptors, and MongoDB connection parameters.
         </p>
       </div>
 
-      {/* Grid Documentation Links */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-        {/* Swagger APIs */}
+      {/* Docs Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        {/* Swagger OpenAPI Docs */}
         <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <Server size={20} color="var(--primary-accent)" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>REST OpenAPI / Swagger Docs</h3>
+          <div className="card-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Server size={18} />
+              <div className="card-title">OpenAPI 3.0 (Swagger UI)</div>
+            </div>
+            <span className="badge badge-inverted">REST SPEC</span>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            Click to open interactive Swagger UI in a new tab for each microservice:
+
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+            Interactive Swagger documentation running directly on each Spring Boot microservice:
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {swaggerLinks.map(link => (
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {swaggerLinks.map((link) => (
               <a
                 key={link.url}
                 href={link.url}
                 target="_blank"
                 rel="noreferrer"
                 className="btn btn-secondary"
-                style={{ justifyContent: 'space-between', width: '100%' }}
+                style={{ justifyContent: 'space-between', padding: '0.65rem 0.85rem' }}
               >
-                <span>{link.name} (Port {link.port})</span>
-                <ExternalLink size={14} />
+                <div>
+                  <div style={{ fontWeight: 600 }}>{link.name}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{link.desc}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="badge badge-outline" style={{ fontFamily: 'JetBrains Mono' }}>
+                    :{link.port}
+                  </span>
+                  <ExternalLink size={13} />
+                </div>
               </a>
             ))}
           </div>
         </div>
 
-        {/* SOAP WSDL */}
+        {/* SOAP WSDL Specification */}
         <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-            <FileText size={20} color="#38bdf8" />
-            <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>SOAP WSDL Specification</h3>
+          <div className="card-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FileText size={18} />
+              <div className="card-title">SOAP WSDL 1.1 Specification</div>
+            </div>
+            <span className="badge badge-outline">XML SCHEMA</span>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-            Contract-first XML WSDL generated by Spring-WS Reporting Service:
+
+          <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
+            Contract-first XML WSDL descriptor automatically published by Spring-WS Reporting Microservice:
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {soapLinks.map(link => (
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            {soapLinks.map((link) => (
               <a
                 key={link.url}
                 href={link.url}
                 target="_blank"
                 rel="noreferrer"
                 className="btn btn-secondary"
-                style={{ justifyContent: 'space-between', width: '100%' }}
+                style={{ justifyContent: 'space-between', padding: '0.65rem 0.85rem' }}
               >
-                <span>{link.name} (Port {link.port})</span>
-                <ExternalLink size={14} />
+                <div>
+                  <div style={{ fontWeight: 600 }}>{link.name}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{link.desc}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span className="badge badge-outline" style={{ fontFamily: 'JetBrains Mono' }}>
+                    :{link.port}
+                  </span>
+                  <ExternalLink size={13} />
+                </div>
               </a>
             ))}
+          </div>
+
+          {/* Database Connection Info Box */}
+          <div style={{
+            marginTop: '1.25rem',
+            padding: '1rem',
+            backgroundColor: 'var(--bg-secondary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: '6px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              <Database size={15} />
+              <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>MongoDB Compass Parameters</span>
+            </div>
+            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              <div>URI: <code>mongodb://localhost:27017</code></div>
+              <div>Database: <code>smart_student_information_system</code></div>
+              <div>Collections: <code>students</code>, <code>courses</code>, <code>academic_records</code></div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* MongoDB Compass Section */}
-      <div className="card" style={{ marginBottom: '2rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-          <Database size={20} color="#10b981" />
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>MongoDB Database & Compass Configuration</h3>
-        </div>
-        <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-          <div><strong>Connection URI:</strong> <code>mongodb://localhost:27017</code></div>
-          <div><strong>Database Name:</strong> <code>smart_student_information_system</code></div>
-          <div style={{ marginTop: '0.5rem' }}><strong>Collections in MongoDB:</strong></div>
-          <ul style={{ marginLeft: '1.5rem' }}>
-            <li><code>students</code> - Stores student profiles, IDs, emails, departments, and statuses.</li>
-            <li><code>courses</code> - Stores subject catalog, codes, credits, and faculty assignments.</li>
-            <li><code>academic_records</code> - Stores internal (40) and external (60) marks, grades, and attendance.</li>
-          </ul>
-        </div>
-      </div>
-
-      {/* Architecture Diagram Info */}
+      {/* Complete API Endpoint Routing Matrix */}
       <div className="card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-          <Layers size={20} color="#f59e0b" />
-          <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>Microservices Topology</h3>
+        <div className="card-header">
+          <div>
+            <div className="card-title">API Gateway Routing Directory</div>
+            <div className="card-description">Standardized REST and SOAP endpoints proxied through Port 8990</div>
+          </div>
+          <span className="badge badge-outline">SPRING CLOUD ROUTER</span>
         </div>
-        <pre className="code-preview" style={{ color: '#e2e8f0', fontSize: '0.85rem' }}>
-{`
-                        ┌───────────────────────┐
-                        │     React Frontend    │ (Port 3000)
-                        └───────────┬───────────┘
-                                    │
-                                    ▼
-                        ┌───────────────────────┐
-                        │      API Gateway      │ (Spring Cloud Gateway Port 8080)
-                        └───────────┬───────────┘
-                                    │
-              ┌─────────────────────┼─────────────────────┐
-              │                     │                     │
-              ▼                     ▼                     ▼
-     ┌────────────────┐   ┌────────────────┐   ┌──────────────────┐
-     │ Student Service│   │ Course Service │   │ Academic Service │
-     │  (Port 8081)   │   │  (Port 8082)   │   │   (Port 8083)    │
-     └───────┬────────┘   └───────┬────────┘   └────────┬─────────┘
-             │                    │                     │
-             ▼                    ▼                     ▼
-       MongoDB Database      MongoDB Database       MongoDB Database
-  (smart_student_information_system @ mongodb://localhost:27017)
 
-                        ┌───────────────────────┐
-                        │  Reporting Service    │ (Port 8084)
-                        │ SOAP API & WSDL       │ (/ws/studentReport.wsdl)
-                        └───────────┬───────────┘
-                                    │
-                                    ▼
-                             MongoDB Database
-`}
-        </pre>
+        <div className="table-container" style={{ border: 'none' }}>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Gateway URI Path</th>
+                <th>Target Microservice</th>
+                <th>Functionality Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apiEndpoints.map((ep, idx) => (
+                <tr key={idx}>
+                  <td>
+                    <span 
+                      className="badge" 
+                      style={{ 
+                        fontFamily: 'JetBrains Mono', 
+                        fontWeight: 700,
+                        backgroundColor: ep.method === 'GET' ? 'var(--bg-secondary)' : 'var(--btn-primary-bg)',
+                        color: ep.method === 'GET' ? 'var(--text-primary)' : 'var(--btn-primary-text)'
+                      }}
+                    >
+                      {ep.method}
+                    </span>
+                  </td>
+                  <td>
+                    <code style={{ fontFamily: 'JetBrains Mono', fontSize: '0.82rem' }}>{ep.path}</code>
+                  </td>
+                  <td>
+                    <span className="badge badge-outline" style={{ fontFamily: 'JetBrains Mono' }}>
+                      {ep.port}
+                    </span>
+                  </td>
+                  <td style={{ color: 'var(--text-secondary)' }}>
+                    {ep.desc}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
